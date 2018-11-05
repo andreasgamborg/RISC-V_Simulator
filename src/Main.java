@@ -31,7 +31,7 @@ public class Main {
                     reg[rd] = reg[rs1] + imm;
                     break;
                 default:
-                    System.out.println("Opcode " + opcode + " not yet implemented");
+                    System.out.println("Opcode  " + opcode + " not yet implemented");
                     break;
             }
 
