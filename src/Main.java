@@ -17,7 +17,7 @@ public class Main {
         System.out.println("Hello RISC-V World!");
         pc = 0;
 
-        for (;;) {
+        while(true) {
 
             int instr = progr[pc];
             int opcode = instr & 0x7f;
@@ -31,11 +31,11 @@ public class Main {
                     reg[rd] = reg[rs1] + imm;
                     break;
                 default:
-                    System.out.println("Opcode  " + opcode + " not yet implemented");
+                    System.out.println("Opcode  " + opcode + " not yet implemented ");
                     break;
             }
 
-            ++pc; // We count in 4 byte words
+            pc++;
             if (pc >= progr.length) {
                 break;
             }
