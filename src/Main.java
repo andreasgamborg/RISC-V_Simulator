@@ -46,8 +46,8 @@ public class Main {
         }
         
 
-        System.out.println("Program exit");
-        System.out.println("Program exit hej");
+        System.out.println("Program exit hej nej");
+        
 
     }
 
