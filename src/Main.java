@@ -8,6 +8,7 @@ public class Main {
             0x00200093, // addi x1 x0 2
             0x00300113, // addi x2 x0 3
             0x00a00113, // addi x2 x0 10
+            0x00a00113, // addi x2 x0 10
             0x002081b3, // add x3 x1 x2
     };
 
