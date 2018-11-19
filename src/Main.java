@@ -9,15 +9,15 @@ public class Main {
 
     public static void main(String[] args) {
         System.out.println("Hello RISC-V World!");
-        readProgram("program2.txt");
+        readProgram("branch_less_than.txt");
         PC = 0;
 
         while(true) {
-            if (PC >= program.length) {
+            if (PC >= program.length*4) {
                 break;
             }
 
-            int instr = program[PC];
+            int instr = program[PC/4];
             //Opcode
             int opcode = instr & 0x7f;
             int funct3 = (instr >> 12) & 0x07;
@@ -29,7 +29,7 @@ public class Main {
             //immidiates
             int imm = (instr >> 20);
             int imm_S = ((instr >> 20) & 0xfe0) | ((instr >> 7)& 0x1f);
-            int imm_SB = ((imm_S & 0x800)<<1) | ((imm_S & 0x001)<<11) | (imm_S & 0x7fe); // Clearify format
+            int imm_SB = 0xffffe000|((imm_S & 0x800)<<1) | ((imm_S & 0x001)<<11) | (imm_S & 0x7fe); // Clearify format
 
             switch (opcode) {
                 case 0x13: //addi
@@ -40,6 +40,7 @@ public class Main {
                             case 0x0: //add/sub
                                 if (funct7 == 0) { //add
                                     R[rd] = R[rs1] + R[rs2];
+                                    System.out.println("Adding: "+rs1+" + "+rs2+" to "+rd);
                                 } else { //sub
                                     R[rd] = R[rs1] - R[rs2];
                                 }
@@ -65,23 +66,23 @@ public class Main {
                         switch (funct3) {
                             case 0x0: //beq
                                 if (R[rs1] == R[rs2]){
-                                    PC = PC+imm_SB;
+                                    PC = PC+imm_SB-4;
                                 }
                                 break;
                             case 0x1: //bne
                                 if (R[rs1] != R[rs2]){
-                                    PC = PC+imm_SB;
+                                    PC = PC+imm_SB-4;
                                 }
                                 break;
                             case 0x4: //blt
                                 if (R[rs1] < R[rs2]){
-                                    System.out.println("SB "+imm_SB);
-                                    PC = PC+imm_SB;
+                                    System.out.println("Branch: "+imm_SB);
+                                    PC = PC+imm_SB-4;
                                 }
                                 break;
                             case 0x5: //bge
                                 if (R[rs1] >= R[rs2]){
-                                    PC = PC+imm_SB;
+                                    PC = PC+imm_SB-4;
                                 }
                                 break;
                             default:
@@ -97,7 +98,7 @@ public class Main {
                     break;
             }
             //Update program counter
-            PC++;
+            PC+=4;
             //Print register content
             for (int i = 0; i < R.length; ++i) {
                 System.out.print(R[i] + " ");
@@ -115,6 +116,7 @@ public class Main {
         File program_file = new File(program_file_path);
         try {
             scan = new Scanner(program_file);
+            scan.useRadix(16);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             System.out.println("Program file not found");
@@ -125,13 +127,14 @@ public class Main {
                 System.out.println("Program file too long");
                 break;
             }
-            buffer[program_line] = Integer.parseInt(scan.nextLine(),16);
+            buffer[program_line] = (int)scan.nextLong();
             program_line++;
         }
         scan.close();
         program = new int[program_line];
         for (int j = 0; j < program_line; j++){
             program[j] = buffer[j];
+            System.out.println("Instrution "+j+": "+program[j]);
         }
     }
 }
