@@ -51,6 +51,15 @@ public class Main {
                             case 0x2: //slt
                                 R[rd] = R[rs1] < R[rs2] ? 0x1 : 0x0;
                                 break;
+                            case 0x3: //sltu
+                            	R[rd] = R[rs1] < R[rs2] ? 0x1 : 0x0;
+                            	break;
+                            case 0x4: //xor
+                            	R[rd] = R[rs1] ^ R[rs2];
+                            	break;
+                            case 0x5: //srl
+                            	R[rd] = R[rs1]>>R[rs2];
+                                break;
                             case 0x6: //or
                                 R[rd] = R[rs1] | R[rs2];
                                 break;
@@ -82,6 +91,17 @@ public class Main {
                                 break;
                             case 0x5: //bge
                                 if (R[rs1] >= R[rs2]){
+                                    PC = PC+imm_SB-4;
+                                }
+                                break;
+                            case 0x6: //bltu
+                            	if (R[rs1] < R[rs2]){
+                                    System.out.println("Branch: "+imm_SB);
+                                    PC = PC+imm_SB-4;
+                                }
+                                break;
+                            case 0x7: //bgeu
+                            	if (R[rs1] >= R[rs2]){
                                     PC = PC+imm_SB-4;
                                 }
                                 break;
