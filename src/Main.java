@@ -5,17 +5,21 @@ import java.util.Scanner;
 public class Main {
     static int PC;
     static int R[] = new int[32];
-    static int M[] = new int[1024];
+    static int M[] = new int[524288*2];
 
     public static void main(String[] args) {
-        System.out.println("Hello RISC-V World!");
+        Scanner scanin = new Scanner(System.in);
+        boolean done = false;
+
+        System.out.println("Enter path to program file");
+        String program_path = scanin.nextLine();
         try {
-            readProgramBIN("tests/task3/loop.bin");
+            readProgramBIN(program_path);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Could not open program file");
+            done = true;
         }
         PC = 0;
-        boolean done = false;
         while(!done) {
             //Fetch
             int instr = M[PC/4];
@@ -25,14 +29,28 @@ public class Main {
             PC+=4;
             // Print register content
             printReg();
+            if (done){
+                System.out.println("Program exit");
+                try {
+                    writeOut("out.bin");
+                } catch (IOException e) {
+                    System.out.println("Could not write output file");
+                }
+            }
         }
-        System.out.println("Program exit");
+    }
+
+    private static void writeOut(String file_name) throws IOException {
+        DataOutputStream out = new DataOutputStream(new FileOutputStream(file_name));
+        System.out.println("Writing output file...");
+        for (int i = 0; i < R.length; ++i) {
+            out.writeInt(R[i]);
+        }
+        out.close();
     }
 
     public static void readProgram(String program_file_path){
-        int max_length = 100;
         Scanner scan = null;
-        int buffer[] = new int[max_length];
         File program_file = new File(program_file_path);
         try {
             scan = new Scanner(program_file);
@@ -41,17 +59,12 @@ public class Main {
             e.printStackTrace();
             System.out.println("Program file not found");
         }
-        int program_line = 0;
+        int i = 0;
         while (scan.hasNextLine()){
-            if (program_line>=max_length){
-                System.out.println("Program file too long");
-                break;
-            }
-            buffer[program_line] = (int)scan.nextLong();
-            program_line++;
+            M[i] = (int)scan.nextLong();
+            i++;
         }
         scan.close();
-
     }
     public static void readProgramBIN(String program_file_path) throws IOException {
         Path path = Paths.get(program_file_path);
@@ -89,14 +102,16 @@ public class Main {
         int rs1 = (instr >> 15) & 0x01f;
         int rs2 = (instr >> 20) & 0x0f;
         // Immidiates
-        int imm_I = (instr >> 20);
-        int imm_S = ((instr >> 20) & 0xfe0) | ((instr >> 7)& 0x1f);
+        int imm_I = instr & 0xfff00000;
+        imm_I = imm_I >> 20;
+        int imm_S = (instr & 0xfe000000) | ((instr << 13)& 0x01f00000);
+        imm_S = imm_S >> 20;
         int imm_SB = (instr & 0x80000000) | ((instr << 23) & 0x40000000) |((instr >> 1) & 0x3f000000) | ((instr << 12) & 0x00f00000);
         imm_SB = imm_SB >> 19; // sign extension
         int imm_U = instr & 0xfffff000;
         int imm_UJ = ((instr >> 11)& 0x100000)|((instr >> 20)& 0x07fe)|((instr >> 9)& 0x800)|(instr & 0xff000);
 
-        System.out.printf("Opcode: %2x Func3: %1x\n",opcode,funct3);
+        System.out.printf("PC: %4d  | Opcode: 0x%02x  | Func3: 0x%1x\n",PC, opcode, funct3);
         // R0 must be 0
         R[0] = 0;
         // Compute instr
@@ -106,6 +121,15 @@ public class Main {
                 done = true;
                 break;
             case 0x03:
+                switch (funct3) {
+                    case 0x2: //lw
+                        System.out.printf("lw R%d, %d(R%d) \n",rd, imm_I, rs1);
+                        R[rd] = M[(R[rs1]+imm_I)/4];
+                        break;
+                    default:
+                        System.out.println("Funct3 not found " + opcode + " " + funct3);
+                        break;
+                }
                 break;
             case 0x13: //I-Format
                 switch (funct3) {
@@ -155,37 +179,54 @@ public class Main {
                 //break;
             //case 0x1b:
                 //break;
-            //case 0x23:
-                //break;
+            case 0x23:
+                switch (funct3) {
+                    case 0x2: //sw
+                        System.out.printf("sw R%d, %d(R%d) \n",rs2, imm_S, rs1);
+                        M[(R[rs1]+imm_S)/4] = R[rs2];
+                        break;
+                    default:
+                        System.out.println("Funct3 not found " + opcode + " " + funct3);
+                        break;
+                }
+                break;
             case 0x33:
                 switch (funct3) {
                     case 0x0: //add/sub
                         if (funct7 == 0) { //add
+                            System.out.printf("add R%d, R%d, R%d \n",rd, rs1, rs2);
                             R[rd] = R[rs1] + R[rs2];
-                            System.out.println("Adding: R"+rs1+" and R"+rs2+" to R"+rd);
                         } else { //sub
+                            System.out.printf("sub R%d, R%d, R%d \n",rd, rs1, rs2);
                             R[rd] = R[rs1] - R[rs2];
                         }
                         break;
                     case 0x1: //sll
+                        System.out.printf("sll R%d, R%d, R%d \n",rd, rs1, rs2);
                         R[rd] = R[rs1]<<R[rs2];
                         break;
                     case 0x2: //slt
+                        System.out.printf("slt R%d, R%d, R%d \n",rd, rs1, rs2);
                         R[rd] = R[rs1] < R[rs2] ? 0x1 : 0x0;
                         break;
                     case 0x3: //sltu
-                        R[rd] = R[rs1] < R[rs2] ? 0x1 : 0x0;
+                        System.out.printf("sltu R%d, R%d, R%d \n",rd, rs1, rs2);
+                        R[rd] = R[rs1] < R[rs2] ? 0x1 : 0x0; // FIXME: 25-11-2018
                         break;
                     case 0x4: //xor
+                        System.out.printf("xor R%d, R%d, R%d \n",rd, rs1, rs2);
                         R[rd] = R[rs1] ^ R[rs2];
                         break;
                     case 0x5: //srl
+                        System.out.printf("srl R%d, R%d, R%d \n",rd, rs1, rs2);
                         R[rd] = R[rs1]>>R[rs2];
                         break;
                     case 0x6: //or
+                        System.out.printf("or R%d, R%d, R%d \n",rd, rs1, rs2);
                         R[rd] = R[rs1] | R[rs2];
                         break;
                     case 0x7: //and
+                        System.out.printf("and R%d, R%d, R%d \n",rd, rs1, rs2);
                         R[rd] = R[rs1] & R[rs2];
                         break;
                     default:
@@ -219,8 +260,7 @@ public class Main {
                     case 0x4: //blt
                         System.out.printf("blt R%d, R%d, %d \n",rs1,rs2,imm_SB);
                         if (R[rs1] < R[rs2]){
-                            System.out.println("Branch taken "+ imm_SB/4);
-                            System.out.printf("%d : 0x%x\n",imm_SB,imm_SB);
+                            System.out.println("Branch taken ");
                             PC = PC+imm_SB-4;
                         }
                         break;
@@ -246,16 +286,20 @@ public class Main {
                         }
                         break;
                     default:
-                        System.out.println("Funct3 not found " + opcode + " " + funct3);
+                        done = true;
+                        System.out.printf("Funct3 - %2x not implemented for opcode %2x\n", funct3, opcode);
                         break;
                 }
                 break;
-            //case 0x67:
-                //break;
+            case 0x67: //jalr
+                System.out.printf("jalr R%d, R%d+%d \n",rd, rs1, imm_I);
+                R[rd] = PC+4;
+                PC = R[rs1] + imm_I - 4;
+                break;
             case 0x6f: //jal
                 System.out.printf("jal R%d, %d \n",rd,imm_UJ);
                 R[rd] = PC+4;
-                PC = imm_UJ;
+                PC = PC + imm_UJ - 4;
                 break;
             case 0x73: //ecall
                 done = true;
@@ -263,7 +307,7 @@ public class Main {
                 break;
             default:
                 done = true;
-                System.out.println("Opcode  " + opcode + " not yet implemented ");
+                System.out.printf("Opcode : 0x%2x : not implemented\n",opcode);
                 break;
         }
         return done;
