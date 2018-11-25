@@ -10,7 +10,7 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Hello RISC-V World!");
         try {
-            readProgramBIN("tests/task1/shift.bin");
+            readProgramBIN("tests/task2/branchmany.bin");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -80,20 +80,26 @@ public class Main {
     }
     public static boolean execute(int instr){
         boolean done = false;
-        //Opcode
+        // Opcode
         int opcode = instr & 0x7f;
         int funct3 = (instr >> 12) & 0x07;
         int funct7 = (instr >> 25) & 0x7f;
-        //Operands
+        // Operands
         int rd = (instr >> 7) & 0x01f;
         int rs1 = (instr >> 15) & 0x01f;
         int rs2 = (instr >> 20) & 0x0f;
-        //immidiates
-        int imm = (instr >> 20);
+        // Immidiates
+        int imm_I = (instr >> 20);
         int imm_S = ((instr >> 20) & 0xfe0) | ((instr >> 7)& 0x1f);
-        int imm_SB = 0xffffe000|((imm_S & 0x800)<<1) | ((imm_S & 0x001)<<11) | (imm_S & 0x7fe); // Clearify format
+        int imm_SB = (instr & 0x80000000) | ((instr << 23) & 0x40000000) |((instr >> 1) & 0x3f000000) | ((instr << 12) & 0x00f00000);
+        imm_SB = imm_SB >> 19; // sign extension
+
         int imm_U = (instr >> 12);
+        int imm_UJ = (instr >> 12);  // FIXME: 25-11-2018
         System.out.printf("Opcode: %2x Func3: %1x\n",opcode,funct3);
+        // R0 must be 0
+        R[0] = 0;
+        // Compute instr
         switch (opcode) {
             case 0x00: //end of program
                 System.out.println("End of program reached");
@@ -104,22 +110,41 @@ public class Main {
             case 0x13: //I-Format
                 switch (funct3) {
                     case 0x0: //addi
-                        System.out.println("Adding imm: "+imm+" to R"+rd);
-                        R[rd] = R[rs1] + imm;
+                        System.out.printf("addi R%d, R%d, %d \n",rd,rs1,imm_I);
+                        R[rd] = R[rs1] + imm_I;
                         break;
                     case 0x1: //slli
+                        System.out.printf("slli R%d, R%d, %d \n",rd,rs1,imm_I);
+                        R[rd] = R[rs1] << imm_I;
                         break;
                     case 0x2: //slti
+                        System.out.printf("slti R%d, R%d, %d \n",rd,rs1,imm_I);
+                        R[rd] = R[rs1] < imm_I ? 1 : 0;
                         break;
                     case 0x3: //sltiu
                         break;
                     case 0x4: //xori
+                        System.out.printf("xori R%d, R%d, %d \n",rd,rs1,imm_I);
+                        R[rd] = R[rs1] ^ imm_I;
                         break;
                     case 0x5: //srli/srai
+                        if (funct7 == 0) {
+                            System.out.printf("srli R%d, R%d, %d \n",rd,rs1,imm_I);
+                            R[rd] = R[rs1] >> imm_I;
+                        }else{
+                            System.out.printf("srai R%d, R%d, %d \n",rd,rs1,imm_I);
+                            System.out.println("May be wrong!");
+                            R[rd] = R[rs1] >> imm_I;
+                        }
+
                         break;
                     case 0x6: //ori
+                        System.out.printf("ori R%d, R%d, %d \n",rd,rs1,imm_I);
+                        R[rd] = R[rs1] | imm_I;
                         break;
                     case 0x7: //andi
+                        System.out.printf("andi R%d, R%d, %d \n",rd,rs1,imm_I);
+                        R[rd] = R[rs1] & imm_I;
                         break;
                     default:
                         System.out.println("Funct3 not found " + opcode + " " + funct3);
@@ -171,42 +196,52 @@ public class Main {
             case 0x37: //lui
                 R[rd] &= 0xfffff<<12;
                 R[rd] |= imm_U<<12;
-                System.out.println("Add upper imm to R"+ rd);
+                System.out.println("Add upper imm_I to R"+ rd);
                 break;
             //case 0x3b:
                 //break;
             case 0x63: //branch
                 switch (funct3) {
                     case 0x0: //beq
+                        System.out.printf("beq R%d, R%d, %d \n",rs1,rs2,imm_SB);
                         if (R[rs1] == R[rs2]){
+                            System.out.println("Branch taken");
                             PC = PC+imm_SB-4;
                         }
                         break;
                     case 0x1: //bne
+                        System.out.printf("bne R%d, R%d, %d \n",rs1,rs2,imm_SB);
                         if (R[rs1] != R[rs2]){
+                            System.out.println("Branch taken");
                             PC = PC+imm_SB-4;
                         }
                         break;
                     case 0x4: //blt
+                        System.out.printf("blt R%d, R%d, %d \n",rs1,rs2,imm_SB);
                         if (R[rs1] < R[rs2]){
-                            System.out.println("Branch blt: "+imm_SB);
+                            System.out.println("Branch taken "+ imm_SB/4);
+                            System.out.printf("%d : 0x%x\n",imm_SB,imm_SB);
                             PC = PC+imm_SB-4;
                         }
                         break;
                     case 0x5: //bge
+                        System.out.printf("bge R%d, R%d, %d \n",rs1,rs2,imm_SB);
                         if (R[rs1] >= R[rs2]){
-                            System.out.println("Branch bge: "+imm_SB);
+                            System.out.println("Branch taken ");
                             PC = PC+imm_SB-4;
                         }
                         break;
                     case 0x6: //bltu
+                        System.out.printf("bltu R%d, R%d, %d \n",rs1,rs2,imm_SB);
                         if (R[rs1] < R[rs2]){
-                            System.out.println("Branch bltu: "+imm_SB);
+                            System.out.println("Branch taken");
                             PC = PC+imm_SB-4;
                         }
                         break;
                     case 0x7: //bgeu
+                        System.out.printf("bgeu R%d, R%d, %d \n",rs1,rs2,imm_SB);
                         if (R[rs1] >= R[rs2]){
+                            System.out.println("Branch taken");
                             PC = PC+imm_SB-4;
                         }
                         break;
