@@ -10,16 +10,13 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Hello RISC-V World!");
         try {
-            readProgramBIN("tests/task1/addlarge.bin");
+            readProgramBIN("tests/task1/shift.bin");
         } catch (IOException e) {
             e.printStackTrace();
         }
         PC = 0;
         boolean done = false;
         while(!done) {
-            if (PC >= M.length*4) {
-                break;
-            }
             //Fetch
             int instr = M[PC/4];
             //Execute (break when finished)
@@ -98,24 +95,49 @@ public class Main {
         int imm_U = (instr >> 12);
         System.out.printf("Opcode: %2x Func3: %1x\n",opcode,funct3);
         switch (opcode) {
+            case 0x00: //end of program
+                System.out.println("End of program reached");
+                done = true;
+                break;
             case 0x03:
                 break;
-            case 0x13: //addi
-                System.out.println("Adding imm: "+imm+" to "+rd);
-                R[rd] = R[rs1] + imm;
+            case 0x13: //I-Format
+                switch (funct3) {
+                    case 0x0: //addi
+                        System.out.println("Adding imm: "+imm+" to R"+rd);
+                        R[rd] = R[rs1] + imm;
+                        break;
+                    case 0x1: //slli
+                        break;
+                    case 0x2: //slti
+                        break;
+                    case 0x3: //sltiu
+                        break;
+                    case 0x4: //xori
+                        break;
+                    case 0x5: //srli/srai
+                        break;
+                    case 0x6: //ori
+                        break;
+                    case 0x7: //andi
+                        break;
+                    default:
+                        System.out.println("Funct3 not found " + opcode + " " + funct3);
+                        break;
+                }
                 break;
-            case 0x17:
-                break;
-            case 0x1b:
-                break;
-            case 0x23:
-                break;
+            //case 0x17:
+                //break;
+            //case 0x1b:
+                //break;
+            //case 0x23:
+                //break;
             case 0x33:
                 switch (funct3) {
                     case 0x0: //add/sub
                         if (funct7 == 0) { //add
                             R[rd] = R[rs1] + R[rs2];
-                            System.out.println("Adding: "+rs1+" and "+rs2+" to "+rd);
+                            System.out.println("Adding: R"+rs1+" and R"+rs2+" to R"+rd);
                         } else { //sub
                             R[rd] = R[rs1] - R[rs2];
                         }
@@ -149,9 +171,10 @@ public class Main {
             case 0x37: //lui
                 R[rd] &= 0xfffff<<12;
                 R[rd] |= imm_U<<12;
+                System.out.println("Add upper imm to R"+ rd);
                 break;
-            case 0x3b:
-                break;
+            //case 0x3b:
+                //break;
             case 0x63: //branch
                 switch (funct3) {
                     case 0x0: //beq
@@ -166,18 +189,19 @@ public class Main {
                         break;
                     case 0x4: //blt
                         if (R[rs1] < R[rs2]){
-                            System.out.println("Branch: "+imm_SB);
+                            System.out.println("Branch blt: "+imm_SB);
                             PC = PC+imm_SB-4;
                         }
                         break;
                     case 0x5: //bge
                         if (R[rs1] >= R[rs2]){
+                            System.out.println("Branch bge: "+imm_SB);
                             PC = PC+imm_SB-4;
                         }
                         break;
                     case 0x6: //bltu
                         if (R[rs1] < R[rs2]){
-                            System.out.println("Branch: "+imm_SB);
+                            System.out.println("Branch bltu: "+imm_SB);
                             PC = PC+imm_SB-4;
                         }
                         break;
@@ -197,6 +221,7 @@ public class Main {
                 //break;
             case 0x73: //ecall
                 done = true;
+                System.out.println("ecall");
                 break;
             default:
                 done = true;
