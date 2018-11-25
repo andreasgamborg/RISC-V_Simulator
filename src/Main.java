@@ -10,7 +10,7 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Hello RISC-V World!");
         try {
-            readProgramBIN("tests/task2/branchmany.bin");
+            readProgramBIN("tests/task3/loop.bin");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -93,9 +93,9 @@ public class Main {
         int imm_S = ((instr >> 20) & 0xfe0) | ((instr >> 7)& 0x1f);
         int imm_SB = (instr & 0x80000000) | ((instr << 23) & 0x40000000) |((instr >> 1) & 0x3f000000) | ((instr << 12) & 0x00f00000);
         imm_SB = imm_SB >> 19; // sign extension
+        int imm_U = instr & 0xfffff000;
+        int imm_UJ = ((instr >> 11)& 0x100000)|((instr >> 20)& 0x07fe)|((instr >> 9)& 0x800)|(instr & 0xff000);
 
-        int imm_U = (instr >> 12);
-        int imm_UJ = (instr >> 12);  // FIXME: 25-11-2018
         System.out.printf("Opcode: %2x Func3: %1x\n",opcode,funct3);
         // R0 must be 0
         R[0] = 0;
@@ -194,9 +194,9 @@ public class Main {
                 }
                 break;
             case 0x37: //lui
-                R[rd] &= 0xfffff<<12;
-                R[rd] |= imm_U<<12;
-                System.out.println("Add upper imm_I to R"+ rd);
+                R[rd] &= 0x00000fff;
+                R[rd] |= imm_U;
+                System.out.printf("lui R%d, %d \n",rs1,imm_U);
                 break;
             //case 0x3b:
                 //break;
@@ -252,8 +252,11 @@ public class Main {
                 break;
             //case 0x67:
                 //break;
-            //case 0x6f:
-                //break;
+            case 0x6f: //jal
+                System.out.printf("jal R%d, %d \n",rd,imm_UJ);
+                R[rd] = PC+4;
+                PC = imm_UJ;
+                break;
             case 0x73: //ecall
                 done = true;
                 System.out.println("ecall");
