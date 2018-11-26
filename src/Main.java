@@ -41,10 +41,14 @@ public class Main {
     }
 
     private static void writeOut(String file_name) throws IOException {
-        DataOutputStream out = new DataOutputStream(new FileOutputStream(file_name));
+        FileOutputStream file = new FileOutputStream(file_name);
+        DataOutputStream out = new DataOutputStream(file);
         System.out.println("Writing output file...");
         for (int i = 0; i < R.length; ++i) {
-            out.writeInt(R[i]);
+            out.writeByte((R[i]&0x000000ff)>>0);
+            out.writeByte((R[i]&0x0000ff00)>>8);
+            out.writeByte((R[i]&0x00ff0000)>>16);
+            out.writeByte((R[i]&0xff000000)>>24);
         }
         out.close();
     }
@@ -99,8 +103,8 @@ public class Main {
         int funct7 = (instr >> 25) & 0x7f;
         // Operands
         int rd = (instr >> 7) & 0x01f;
-        int rs1 = (instr >> 15) & 0x01f;
-        int rs2 = (instr >> 20) & 0x0f;
+        int rs1 = (instr >> 15) & 0x1f;
+        int rs2 = (instr >> 20) & 0x1f;
         // Immidiates
         int imm_I = instr & 0xfff00000;
         imm_I = imm_I >> 20;
@@ -109,15 +113,15 @@ public class Main {
         int imm_SB = (instr & 0x80000000) | ((instr << 23) & 0x40000000) |((instr >> 1) & 0x3f000000) | ((instr << 12) & 0x00f00000);
         imm_SB = imm_SB >> 19; // sign extension
         int imm_U = instr & 0xfffff000;
-        int imm_UJ = ((instr >> 11)& 0x100000)|((instr >> 20)& 0x07fe)|((instr >> 9)& 0x800)|(instr & 0xff000);
-
+        int imm_UJ = (instr & 0x80000000) | ((instr << 11) & 0x7f800000) |((instr << 2) & 0x00400000) | ((instr >> 9) & 0x003ff000);
+        imm_UJ = imm_UJ >> 11;
         System.out.printf("PC: %4d  | Opcode: 0x%02x  | Func3: 0x%1x\n",PC, opcode, funct3);
         // R0 must be 0
         R[0] = 0;
         // Compute instr
         switch (opcode) {
             case 0x00: //end of program
-                System.out.println("End of program reached");
+                System.out.println("End of program reached: no ecall");
                 done = true;
                 break;
             case 0x03:
