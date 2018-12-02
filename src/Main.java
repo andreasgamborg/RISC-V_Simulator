@@ -5,7 +5,7 @@ import java.util.Scanner;
 public class Main {
     static int PC;
     static int R[] = new int[32];
-    static int M[] = new int[524288*2];
+    static int M[] = new int[1048576];
 
     public static void main(String[] args) {
         Scanner scanin = new Scanner(System.in);
@@ -19,7 +19,9 @@ public class Main {
             System.out.println("Could not open program file");
             done = true;
         }
+        //Initialize PC and SP
         PC = 0;
+        R[2] = 1048575;
         while(!done) {
             //Fetch
             int instr = M[PC/4];
@@ -134,15 +136,15 @@ public class Main {
                         R[rd] = M[(R[rs1]+imm_I)/4];
                         if((R[rs1]+imm_I)%4==0){
                             R[rd] &= 0x000000ff;
-                        }
-                        if((R[rs1]+imm_I)%4==1){
+                        }else if((R[rs1]+imm_I)%4==1){
                             R[rd] &= 0x0000ff00;
-                        }
-                        if((R[rs1]+imm_I)%4==2){
+                            R[rd] = R[rd] >> 8;
+                        }else if((R[rs1]+imm_I)%4==2){
                             R[rd] &= 0x00ff0000;
-                        }
-                        if((R[rs1]+imm_I)%4==3){
+                            R[rd] = R[rd] >> 16;
+                        }else if((R[rs1]+imm_I)%4==3){
                             R[rd] &= 0xff000000;
+                            R[rd] = R[rd] >> 24;
                         }
                         break;
                     case 0x2: //lw
@@ -204,6 +206,7 @@ public class Main {
                 }
                 break;
             case 0x17:
+                System.out.printf("auipc %d \n", imm_S);
                 PC += imm_S;
                 break;
             //case 0x1b:
