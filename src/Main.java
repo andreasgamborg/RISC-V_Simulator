@@ -118,6 +118,9 @@ public class Main {
         System.out.printf("PC: %4d  | Opcode: 0x%02x  | Func3: 0x%1x\n",PC, opcode, funct3);
         // R0 must be 0
         R[0] = 0;
+        // for unsigned
+        long r1;
+        long r2;
         // Compute instr
         switch (opcode) {
             case 0x00: //end of program
@@ -126,6 +129,22 @@ public class Main {
                 break;
             case 0x03:
                 switch (funct3) {
+                    case 0x0: //lb
+                        System.out.printf("lb R%d, %d(R%d) \n",rd, imm_I, rs1);
+                        R[rd] = M[(R[rs1]+imm_I)/4];
+                        if((R[rs1]+imm_I)%4==0){
+                            R[rd] &= 0x000000ff;
+                        }
+                        if((R[rs1]+imm_I)%4==1){
+                            R[rd] &= 0x0000ff00;
+                        }
+                        if((R[rs1]+imm_I)%4==2){
+                            R[rd] &= 0x00ff0000;
+                        }
+                        if((R[rs1]+imm_I)%4==3){
+                            R[rd] &= 0xff000000;
+                        }
+                        break;
                     case 0x2: //lw
                         System.out.printf("lw R%d, %d(R%d) \n",rd, imm_I, rs1);
                         R[rd] = M[(R[rs1]+imm_I)/4];
@@ -150,6 +169,11 @@ public class Main {
                         R[rd] = R[rs1] < imm_I ? 1 : 0;
                         break;
                     case 0x3: //sltiu
+                        System.out.printf("sltiu R%d, R%d, %d \n",rd,rs1,imm_I);
+                        r1 = R[rs1] & 0x00000000ffffffffL;
+                        r2 = imm_I & 0x00000000ffffffffL;
+                        System.out.printf("r1 %d r2 %d \n",r1,r2);
+                        R[rd] = r1 < r2 ? 1 : 0;
                         break;
                     case 0x4: //xori
                         System.out.printf("xori R%d, R%d, %d \n",rd,rs1,imm_I);
@@ -179,8 +203,9 @@ public class Main {
                         break;
                 }
                 break;
-            //case 0x17:
-                //break;
+            case 0x17:
+                PC += imm_S;
+                break;
             //case 0x1b:
                 //break;
             case 0x23:
@@ -215,7 +240,10 @@ public class Main {
                         break;
                     case 0x3: //sltu
                         System.out.printf("sltu R%d, R%d, R%d \n",rd, rs1, rs2);
-                        R[rd] = R[rs1] < R[rs2] ? 0x1 : 0x0; // FIXME: 25-11-2018
+                        r1 = R[rs1] & 0x00000000ffffffffL;
+                        r2 = R[rs2] & 0x00000000ffffffffL;
+                        System.out.printf("r1 %d r2 %d \n",r1,r2);
+                        R[rd] = r1 < r2 ? 0x1 : 0x0;
                         break;
                     case 0x4: //xor
                         System.out.printf("xor R%d, R%d, R%d \n",rd, rs1, rs2);
@@ -277,14 +305,18 @@ public class Main {
                         break;
                     case 0x6: //bltu
                         System.out.printf("bltu R%d, R%d, %d \n",rs1,rs2,imm_SB);
-                        if (R[rs1] < R[rs2]){
+                        r1 = R[rs1] & 0x00000000ffffffffL;
+                        r2 = R[rs2] & 0x00000000ffffffffL;
+                        if (r1 < r2){
                             System.out.println("Branch taken");
                             PC = PC+imm_SB-4;
                         }
                         break;
                     case 0x7: //bgeu
                         System.out.printf("bgeu R%d, R%d, %d \n",rs1,rs2,imm_SB);
-                        if (R[rs1] >= R[rs2]){
+                        r1 = R[rs1] & 0x00000000ffffffffL;
+                        r2 = R[rs2] & 0x00000000ffffffffL;
+                        if (r1 >= r2){
                             System.out.println("Branch taken");
                             PC = PC+imm_SB-4;
                         }
